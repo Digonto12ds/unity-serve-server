@@ -1,8 +1,13 @@
 import express from "express";
 import cors from "cors";
 import 'dotenv/config'
-
 import { MongoClient } from 'mongodb';
+
+const PORT = 8000;
+const app  = express();
+
+app.use(cors());
+app.use(express.json());
 
 const client = new MongoClient(process.env.Mongodb_URL);
 
@@ -15,21 +20,22 @@ export async function connectToMongoDB() {
     console.dir(err);
   }
 }
-
-
-//http://localhost:8000
-const PORT = 8000;
-const app  = express();
-
-const monogoClient = await connectToMongoDB();
-const db = MongoClient.db("unity-serve") 
+const mongoClient = await connectToMongoDB();
+const db = mongoClient.db("unity-serve") 
 const destinationCollection = db.collection("upcoming_event")
 
 
+//http://localhost:8000/add-event
 
+app.post('/add-event', async(req,res) => {
+  const data = req.body
+  const result = await destinationCollection.insertOne(data)
 
-app.use(cors());
-app.use(express.json());
+  console.log(result)
+
+  res.send(result)
+})
+
 
 app.get ('/', (req, res)=>{
     res.send({message: `Server is ruuning on port ${PORT}`})
