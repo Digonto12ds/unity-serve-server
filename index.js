@@ -15,12 +15,17 @@ export async function connectToMongoDB() {
     console.dir(err);
   }
 }
-connectToMongoDB();
 
 
-
+//http://localhost:8000
 const PORT = 8000;
 const app  = express();
+
+const monogoClient = await connectToMongoDB();
+const db = MongoClient.db("unity-serve") 
+const destinationCollection = db.collection("upcoming_event")
+
+
 
 
 app.use(cors());
