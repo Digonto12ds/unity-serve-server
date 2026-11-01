@@ -33,7 +33,12 @@ app.post('/add-event', async(req,res) => {
 
   console.log(result)
 
-  res.send(result)
+  res.send(result);
+})
+
+app.get('/upcoming_event', async(req,res)=>{
+  const result = await destinationCollection.find().toArray()
+  res.send(result);
 })
 
 
