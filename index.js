@@ -29,6 +29,13 @@ const destinationCollection = db.collection("upcoming_event")
 
 app.post('/add-event', async(req,res) => {
   const data = req.body
+
+  if(!data.creatorEmail){
+    return res.status(400).send({
+      message: "Creator email is required.",
+    });
+  }
+
   const result = await destinationCollection.insertOne(data)
 
   console.log(result)
@@ -46,6 +53,13 @@ app.get('/upcoming_event/:id',async(req,res)=>{
   
   const result = await destinationCollection.findOne({_id: new ObjectId(id)})
   res.send(result)
+})
+
+//Manage Event 
+app.get("/my-events/:email", async(req,res)=>{
+  const email = decodeURIComponent(req.params.email);
+  const events = await destinationCollection.find({creatorEmail: email}).sort({eventDate : 1}).toArray();
+  res.send(events);
 })
 
 
