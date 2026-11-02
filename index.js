@@ -82,42 +82,102 @@ app.put("/my-events/:id", async (req, res) => {
     },
     {
       $set: updateData,
-    }
+    },
   );
-    if (result.matchedCount === 0) {
-      return res.status(404).send({
-        message: "Event not found or you are not the owner.",
-      });
-    }
+  if (result.matchedCount === 0) {
+    return res.status(404).send({
+      message: "Event not found or you are not the owner.",
+    });
+  }
 
-    res.send({ message: "Event updated successfully."});
-
+  res.send({ message: "Event updated successfully." });
 });
 
-app.delete("/my-events/:id", async (req, res)=>{
+app.delete("/my-events/:id", async (req, res) => {
   const { id } = req.params;
   const email = req.query.email;
-  
-    if (!ObjectId.isValid(id)) {
+
+  if (!ObjectId.isValid(id)) {
     return res.status(400).send({ message: "Invalid event ID." });
   }
-  if (!creatorEmail) {
+  if (!email) {
     return res.status(400).send({ message: "Creator email is requried." });
   }
 
   const result = await destinationCollection.deleteOne({
-    _id : new ObjectId(id),
-    creatorEmail : email, 
+    _id: new ObjectId(id),
+    creatorEmail: email,
   });
 
-  if (result.deletedCount === 0){
+  if (result.deletedCount === 0) {
     return res.status(400).send({
       message: "Event not found or you are not the owner.",
-    })
+    });
   }
-  res.send({message: "Event deleted successfully."});
+  res.send({ message: "Event deleted successfully." });
+});
 
-})
+//join event
+
+app.post("/join-event/:id", async (req, res) => {
+  const { id } = req.params;
+  const { email } = req.body;
+
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).send({ message: "Invalid event ID." });
+  }
+  if (!email) {
+    return res.status(400).send({ message: "User email is required." });
+  }
+
+  const result = await destinationCollection.updateOne(
+    {
+      _id: new ObjectId(id),
+    },
+    {
+      $addToSet: { joinedBy: email },
+    },
+  );
+  if (result.matchedCount === 0) {
+    return res.status(404).send({ message: "Event not found." });
+  }
+
+  res.send({ message: "You joined this event successfully." });
+});
+
+app.get("/joined-events/:email", async (req, res) => {
+  const email = decodeURIComponent(req.params.email);
+  const events = await destinationCollection
+    .find({ joinedBy: email })
+    .sort({ eventDate: 1 })
+    .toArray();
+  res.send(events);
+});
+
+app.delete("/leave-event/:id", async (req, res) => {
+  const { id } = req.params;
+  const { email } = req.body;
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).send({ message: "Invalid event ID." });
+  }
+  if (!email) {
+    return res.status(400).send({ message: "User email is required." });
+  }
+
+  const result = await destinationCollection.updateOne(
+    { 
+      _id: new ObjectId(id),
+    },
+    { 
+      $pull: { joinedBy: email },
+    },
+  );
+  if (result.modifiedCount === 0) {
+    return res.status(400).send({ message: "You have not joined this event." });
+  }
+
+  res.send({ message: "You left this event successfully." });
+});
 
 app.get("/", (req, res) => {
   res.send({ message: `Server is ruuning on port ${PORT}` });
