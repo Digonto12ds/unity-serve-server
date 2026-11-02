@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import "dotenv/config";
 import { MongoClient, ObjectId } from "mongodb";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const PORT = 8000;
 const app = express();
@@ -24,9 +25,30 @@ const mongoClient = await connectToMongoDB();
 const db = mongoClient.db("unity-serve");
 const destinationCollection = db.collection("upcoming_event");
 
-//http://localhost:8000/add-event
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ msg: "Unauthorized!" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).send({ msg: "Unauthorized!" });
+  }
 
-app.post("/add-event", async (req, res) => {
+  const JWKS = createRemoteJWKSet(
+    new URL(`http://localhost:3000/api/auth/jwks`),
+  );
+
+  try { 
+    const { payload } = await jwtVerify(token, JWKS);
+    next();
+  } catch (error) {
+    return res.status(500).send({ msg: "Server Error!" });
+  }
+};
+
+//http://localhost:8000/add-event
+app.post("/add-event", verifyToken, async (req, res) => {
   const data = req.body;
 
   if (!data.creatorEmail) {
@@ -54,8 +76,9 @@ app.get("/upcoming_event/:id", async (req, res) => {
   res.send(result);
 });
 
+
 //Manage Event
-app.get("/my-events/:email", async (req, res) => {
+app.get("/my-events/:email", verifyToken, async (req, res) => {
   const email = decodeURIComponent(req.params.email);
   const events = await destinationCollection
     .find({ creatorEmail: email })
@@ -64,7 +87,8 @@ app.get("/my-events/:email", async (req, res) => {
   res.send(events);
 });
 
-app.put("/my-events/:id", async (req, res) => {
+
+app.put("/my-events/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   const { creatorEmail, ...updateData } = req.body;
 
@@ -93,7 +117,7 @@ app.put("/my-events/:id", async (req, res) => {
   res.send({ message: "Event updated successfully." });
 });
 
-app.delete("/my-events/:id", async (req, res) => {
+app.delete("/my-events/:id",verifyToken, async (req, res) => {
   const { id } = req.params;
   const email = req.query.email;
 
@@ -118,8 +142,7 @@ app.delete("/my-events/:id", async (req, res) => {
 });
 
 //join event
-
-app.post("/join-event/:id", async (req, res) => {
+app.post("/join-event/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   const { email } = req.body;
 
@@ -145,7 +168,8 @@ app.post("/join-event/:id", async (req, res) => {
   res.send({ message: "You joined this event successfully." });
 });
 
-app.get("/joined-events/:email", async (req, res) => {
+
+app.get("/joined-events/:email", verifyToken, async (req, res) => {
   const email = decodeURIComponent(req.params.email);
   const events = await destinationCollection
     .find({ joinedBy: email })
@@ -154,7 +178,8 @@ app.get("/joined-events/:email", async (req, res) => {
   res.send(events);
 });
 
-app.delete("/leave-event/:id", async (req, res) => {
+
+app.delete("/leave-event/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   const { email } = req.body;
   if (!ObjectId.isValid(id)) {
