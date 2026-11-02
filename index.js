@@ -94,6 +94,31 @@ app.put("/my-events/:id", async (req, res) => {
 
 });
 
+app.delete("/my-events/:id", async (req, res)=>{
+  const { id } = req.params;
+  const email = req.query.email;
+  
+    if (!ObjectId.isValid(id)) {
+    return res.status(400).send({ message: "Invalid event ID." });
+  }
+  if (!creatorEmail) {
+    return res.status(400).send({ message: "Creator email is requried." });
+  }
+
+  const result = await destinationCollection.deleteOne({
+    _id : new ObjectId(id),
+    creatorEmail : email, 
+  });
+
+  if (result.deletedCount === 0){
+    return res.status(400).send({
+      message: "Event not found or you are not the owner.",
+    })
+  }
+  res.send({message: "Event deleted successfully."});
+
+})
+
 app.get("/", (req, res) => {
   res.send({ message: `Server is ruuning on port ${PORT}` });
 });
